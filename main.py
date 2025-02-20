@@ -5,6 +5,20 @@ import numpy as np
 from pandas import Index
 from pandas.core.algorithms import nunique_ints
 
+# def find_nearest(array, value):
+#     array = np.asarray(array)
+#     idx = (np.abs(array - value)).argmin()
+#     return array[idx]
+
+def find_nearest_index(array, value, ref_idx):
+    idx_arr = []
+    array = np.asarray(array)
+    for idxElement in range(0, len(array) - 1):
+        if np.abs(array[idxElement] - value) == 0:
+            idx_arr.append(idxElement)
+    idx_arr = np.asarray(idx_arr)
+    idx = (np.abs(idx_arr - ref_idx)).argmin()
+    return idx
 
 path1 = 'data/03-06-2024 11-41-40.csv'
 path2 = 'data/09-10-2024 15-06-33.csv'
@@ -141,44 +155,53 @@ for path in paths:
         #     # pulsesCounter += 1
         # else:
         #     print(i, isPulse)
-        #     print(i, meanValueFor14sec, stdValueFor14sec, countsArray[i], isPulse)
+            print(i, meanValueFor14sec, stdValueFor14sec, countsArray[i], isPulse)
             if triggerArray[i] > triggerArray[i - 1]:
                 triggerArrayChanges.append(i)
                 # isPulse = True
                 # pulsesCounter += 1
-            meanValueFor14secBefore14sec = np.mean(countsArray[i - 29:i-14])
-            stdValueFor14secBefore14sec = np.std(countsArray[i - 29:i-14])
-            meanValueFor14sec = np.mean(countsArray[i - 13:i+1])
-            stdValueFor14sec = np.std(countsArray[i - 13:i+1])
+            meanValueFor14secBefore14sec = np.mean(countsArray[i - 30:i-15])
+            stdValueFor14secBefore14sec = np.std(countsArray[i - 30:i-15])
+            meanValueFor14sec = np.mean(countsArray[i - 14:i])
+            stdValueFor14sec = np.std(countsArray[i - 14:i])
             # print(i, countsArray[i - 13:i])
             if (not isPulse) and (meanValueFor14sec > (meanValueFor14secBefore14sec + factor * stdValueFor14secBefore14sec)):
                 # print(i, isPulse)
                 isPulse = True
-                # print(i, isPulse)
+                print(i, isPulse)
                 pulsesCounter += 1
-                pulseStartValue = max(countsArray[i - 13:i + 1])
-                # pulseTiming = Index(countsArray).get_loc(pulseStartValue)
-                pulseTiming = i
-                pulsesTimings.append(pulseTiming)
+                pulseStartValue = max(countsArray[i - 30:i])
+                # pulseTiming = Index(countsArray).get_loc(pulseStartValue) # Это bool массив
+                pulseTiming = list(countsArray[i - 30:i]).index(pulseStartValue)
                 print(type(pulseTiming))
-                print(pulseTiming)
+                print(i, pulseTiming)
+                # equalIndexesArrayForPulseStartValue = find_nearestIndex(countsArray, pulseStartValue)
+                # print(equalIndexesArrayForPulseStartValue)
+                # pulseTiming = find_nearestIndex(equalIndexesArrayForPulseStartValue, pulseStartValue, i-13)
+                # pulseTiming = find_nearest_index(countsArray, pulseStartValue, i-13)
+                # print(pulseTiming)
+                # pulseTiming = i
+                pulsesTimings.append(pulseTiming)
+                # print(type(pulseTiming))
+                print(i, pulseTiming)
                 # print(len(pulseTiming))
-            if (i - pulseTiming == 30) and pulseTiming:
-                isPulse = False
-                # print(i, isPulse)
-            # print(i, meanValueFor14sec, stdValueFor14sec, countsArray[i], isPulse)
+            if isPulse:
+                if i - pulseTiming == 30:
+                    isPulse = False
+                    # print(i, isPulse)
+            print(i, meanValueFor14sec, stdValueFor14sec, countsArray[i], isPulse)
     print('______________________________________ Файл', paths.index(path) + 1, '______________________________________')
     # print('________________________________________________________________________________________________________')
     print("Number of changes trigger values: ", '\n', nunique_ints(df['tr']) - 1)
     print("Number of counted pulses: ", '\n', pulsesCounter)
-    print("Pulses timings: ", '\n', pulsesTimings)
+    print('\n', "Pulses timings: ", '\n', pulsesTimings)
     print("Trigger array changes:", '\n', triggerArrayChanges)
 
     timeStampsList1 = [e for e in pulsesTimings if e not in triggerArrayChanges]
     timeStampsList2 = [e for e in triggerArrayChanges if e not in pulsesTimings]
     timeStampsList = timeStampsList1 + timeStampsList2
     timeStampsList = sorted(timeStampsList)
-    print("Timestamps of missed counts or triggers: ", '\n', timeStampsList)
+    print('\n', "Timestamps of missed counts or triggers: ", '\n', timeStampsList, '\n')
 
     plt.figure()
     plt.step(df['t'], df['sum'], where='post')
@@ -186,8 +209,7 @@ for path in paths:
     plt.grid(visible=True, which='minor', color='g', linestyle='--')
     plt.yscale('log')
     plt.minorticks_on()
-# plt.show()
-
+plt.show()
 
 # ______________________________________________________________________________________________________________________
 
