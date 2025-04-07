@@ -1,10 +1,18 @@
 import pandas as pd
+import scipy.optimize.elementwise
 # import Cython.Shadow
 from matplotlib import pyplot as plt
 import numpy as np
 from matplotlib.pyplot import xlabel
 # from pandas import Index
 from pandas.core.algorithms import nunique_ints
+from scipy import optimize
+from scipy.optimize import least_squares
+from sympy.codegen.cnodes import sizeof
+
+from sympy.solvers import solve
+from sympy import var, Eq
+
 
 # def find_nearest(array, value):
 #     array = np.asarray(array)
@@ -29,8 +37,8 @@ path5 = 'data/27-05-2024 16-38-07.csv'
 path6 = 'data/12-03-2025 sensitive channel.csv'
 path7 = 'data/12-03-2025 rough channel.csv'
 
-paths = [path1, path2, path3, path4, path5, path6, path7]
-# paths = [path3]
+# paths = [path1, path2, path3, path4, path5, path6, path7]
+paths = [path3]
 
 # print(df.columns)
 # print(len(df))
@@ -39,7 +47,6 @@ paths = [path1, path2, path3, path4, path5, path6, path7]
 # plt.plot(df['t'], df['sum'])
 # plt.step(df['t'], df['sum'], where='post')
 # plt.show()
-
 
 # Start
 path: str
@@ -58,6 +65,11 @@ for path in paths:
     triggerArray = df['tr']
     # triggerArray = np.zeros(len(df), dtype=int) # For testing
     triggerArrayChanges = []
+
+    countsArrayOfPulse = [] # Измеренная скорость счета
+    deadTime = 100 # Первое приближение
+    realCountRate = np.ones(30) # Истинная скорость счета
+
     factor = 3.0  # Множитель для критерия 3-сигма (по умолчанию должен быть равен 3.0)
 
     meanValueFor14sec = 0
@@ -88,25 +100,102 @@ for path in paths:
         # else:
         #     print(i, isPulse)
         #     print(i, meanValueFor14sec, stdValueFor14sec, countsArray[i], isPulse)
-            if triggerArray[i] > triggerArray[i - 1]:
-                triggerArrayChanges.append(i)
-                # isPulse = True
-                # pulsesCounter += 1
-            meanValueFor14sec = np.mean(countsArray[i - 13:i+1])
-            stdValueFor14sec = np.std(countsArray[i - 13:i+1])
-            # print(i, countsArray[i - 13:i])
-            if (not isPulse) and (countsArray[i] > (meanValueFor14sec + factor * stdValueFor14sec)):
-                # print(i, isPulse)
-                isPulse = True
-                # print(i, isPulse)
-                pulsesCounter += 1
-                pulsesTimings.append(i)
-            if pulsesTimings != [] and i - pulsesTimings[-1] == 30:
-                isPulse = False
-                # print(i, isPulse)
-            # print(i, meanValueFor14sec, stdValueFor14sec, countsArray[i], isPulse)
+        if triggerArray[i] > triggerArray[i - 1]:
+            triggerArrayChanges.append(i)
+            # isPulse = True
+            # pulsesCounter += 1
+        meanValueFor14sec = np.mean(countsArray[i - 13:i+1])
+        stdValueFor14sec = np.std(countsArray[i - 13:i+1])
+        # print(i, countsArray[i - 13:i])
+        if (not isPulse) and (countsArray[i] > (meanValueFor14sec + factor * stdValueFor14sec)):
+            # print(i, isPulse)
+            isPulse = True
+            # print(i, isPulse)
+            pulsesCounter += 1
+            pulsesTimings.append(i)
+            # countsArrayOfPulse = []
+        if isPulse: # Внимание на это условие
+            countsArrayOfPulse.append(countsArray[i])
+            # print(countsArray[i])
+            # print(countsArrayOfPulse)
+        if pulsesTimings != [] and i - pulsesTimings[-1] == 30:
+            isPulse = False
+            # Вариант 1 поиска значения мертвого времени _______________________________________________________________
+            # def equations(vars, m):
+            #     n = vars[:-1]
+            #     t = vars[-1]
+            #     return n * np.exp(-n * t) - m
+            #
+            # m = countsArrayOfPulse
+            # # print(m)
+            # t_initial = 1 / (np.e * np.max(m))
+            # n_initial = m.copy()
+            # initial_guess = np.append(n_initial, t_initial)
+            #
+            # result = least_squares(equations, initial_guess, args=(m,), bounds=(0, np.inf))
+            #
+            # n_solution = result.x[:-1]
+            # t_solution = result.x[-1]
+            #
+            # deadTime = t_solution
+            # realCountRate = n_solution
+            #
+            # # print("Solution:")
+            # # print("n =", n_solution)
+            # print("t =", t_solution)
+            # # print("Residuals:", np.sum(result.fun ** 2))
+            #
+            # # countsArrayOfPulse = []
+            # # print(i, isPulse)
 
-    # __________________________________________________________________________________________________________________
+            # Вариант 2 поиска мертвого времени ________________________________________________________________________
+            def equations(vars, m):
+                t = vars[-1]
+                # denominator = 1 - m * t
+                denominator = 1 - np.multiply(m, t)
+                denominator = np.where(np.abs(denominator) < 1e-12, 1e-12, denominator)
+                predicted_n = m / denominator
+                return predicted_n - vars[:-1]
+
+            m = countsArrayOfPulse
+            m = m / sum(m)
+
+            t_initial = 0.1
+            n_initial = m.copy()
+            n_initial = []
+            # test = []
+            for k in range(1, 32):
+                n_initial.append(np.log(2) / 14.2 * np.exp(-np.log(2) / 14.2 * k))
+
+                # test.append(k)
+            # print(test)
+            # print(m) # Содержит 32 элемента
+
+            initial_guess = np.append(n_initial, t_initial)
+
+            result = least_squares(equations, initial_guess, args=(m,), bounds=(0, np.inf))
+
+            # Extract solution
+            n_solution = result.x[:-1]
+            t_solution = result.x[-1]
+
+            # print("Solution:")
+            print(f"t = {t_solution:.6f}")
+            # print("n =", n_solution)
+            # print(f"Residual norm: {np.linalg.norm(result.fun):.2e}")
+
+            plt.figure()
+            # plt.plot(realCountRate)
+            # plt.plot(countsArrayOfPulse)
+            plt.plot(m)
+            plt.plot(n_solution)
+            plt.yscale('log')
+            plt.show()
+            countsArrayOfPulse = []
+
+        # print(i, meanValueFor14sec, stdValueFor14sec, countsArray[i], isPulse)
+
+        # ______________________________________________________________________________________________________________
     print('\n')
     # Third way to define a pulse_______________________________________________________________________________________
     # Вместо критерия второго варианта можно взять критерий, при котором наличие импульса будет определяться по
