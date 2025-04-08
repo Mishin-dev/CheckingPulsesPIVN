@@ -38,7 +38,7 @@ path6 = 'data/12-03-2025 sensitive channel.csv'
 path7 = 'data/12-03-2025 rough channel.csv'
 
 # paths = [path1, path2, path3, path4, path5, path6, path7]
-paths = [path3]
+paths = [path7]
 
 # print(df.columns)
 # print(len(df))
@@ -121,76 +121,87 @@ for path in paths:
         if pulsesTimings != [] and i - pulsesTimings[-1] == 30:
             isPulse = False
             # Вариант 1 поиска значения мертвого времени _______________________________________________________________
-            # def equations(vars, m):
-            #     n = vars[:-1]
-            #     t = vars[-1]
-            #     return n * np.exp(-n * t) - m
-            #
-            # m = countsArrayOfPulse
-            # # print(m)
-            # t_initial = 1 / (np.e * np.max(m))
-            # n_initial = m.copy()
-            # initial_guess = np.append(n_initial, t_initial)
-            #
-            # result = least_squares(equations, initial_guess, args=(m,), bounds=(0, np.inf))
-            #
-            # n_solution = result.x[:-1]
-            # t_solution = result.x[-1]
-            #
-            # deadTime = t_solution
-            # realCountRate = n_solution
-            #
-            # # print("Solution:")
-            # # print("n =", n_solution)
-            # print("t =", t_solution)
-            # # print("Residuals:", np.sum(result.fun ** 2))
-            #
-            # # countsArrayOfPulse = []
-            # # print(i, isPulse)
-
-            # Вариант 2 поиска мертвого времени ________________________________________________________________________
             def equations(vars, m):
+                n = vars[:-1]
                 t = vars[-1]
-                # denominator = 1 - m * t
-                denominator = 1 - np.multiply(m, t)
-                denominator = np.where(np.abs(denominator) < 1e-12, 1e-12, denominator)
-                predicted_n = m / denominator
-                return predicted_n - vars[:-1]
+                return n * np.exp(-n * t) - m
 
             m = countsArrayOfPulse
-            m = m / sum(m)
-
-            t_initial = 0.1
+            # print(m)
+            t_initial = 1 / (np.e * np.max(m))
             n_initial = m.copy()
-            n_initial = []
-            # test = []
-            for k in range(1, 32):
-                n_initial.append(np.log(2) / 14.2 * np.exp(-np.log(2) / 14.2 * k))
-
-                # test.append(k)
-            # print(test)
-            # print(m) # Содержит 32 элемента
-
             initial_guess = np.append(n_initial, t_initial)
 
             result = least_squares(equations, initial_guess, args=(m,), bounds=(0, np.inf))
 
-            # Extract solution
             n_solution = result.x[:-1]
             t_solution = result.x[-1]
 
+            deadTime = t_solution
+            realCountRate = n_solution
+
             # print("Solution:")
-            print(f"t = {t_solution:.6f}")
             # print("n =", n_solution)
-            # print(f"Residual norm: {np.linalg.norm(result.fun):.2e}")
+            # print("t =", t_solution * 10 ** 6)
+            print(t_solution * 10 ** 6)
+            # print("Residuals:", np.sum(result.fun ** 2))
+
+            # countsArrayOfPulse = []
+            # print(i, isPulse)
+
+            # Вариант 2 поиска мертвого времени ________________________________________________________________________
+            # def equations(vars, m):
+            #     t = vars[-1]
+            #     # denominator = 1 - m * t
+            #     denominator = 1 - np.multiply(m, t)
+            #     denominator = np.where(np.abs(denominator) < 1e-12, 1e-12, denominator)
+            #     predicted_n = m / denominator
+            #     return predicted_n - vars[:-1]
+            #
+            # m = countsArrayOfPulse
+            # m = m / sum(m)
+            #
+            # t_initial = 0.1
+            # n_initial = m.copy()
+            # n_initial = []
+            # # test = []
+            # for k in range(1, 32):
+            #     n_initial.append(np.log(2) / 14.2 * np.exp(-np.log(2) / 14.2 * k))
+            #
+            #     # test.append(k)
+            # # print(test)
+            # # print(m) # Содержит 32 элемента
+            #
+            # initial_guess = np.append(n_initial, t_initial)
+            #
+            # result = least_squares(equations, initial_guess, args=(m,), bounds=(0, np.inf))
+            #
+            # # Extract solution
+            # n_solution = result.x[:-1]
+            # t_solution = result.x[-1]
+            #
+            # # print("Solution:")
+            # print(f"t = {t_solution:.6f}")
+            # # print("n =", n_solution)
+            # # print(f"Residual norm: {np.linalg.norm(result.fun):.2e}")
 
             plt.figure()
+
             # plt.plot(realCountRate)
             # plt.plot(countsArrayOfPulse)
-            plt.plot(m)
-            plt.plot(n_solution)
+            # plt.plot(m)
+            # plt.plot(n_solution)
+            plt.step(range(1, 32), m, where='post')
+            plt.step(range(1, 32), n_solution, where='post')
+            plt.xlabel('Время, с')
+            plt.ylabel('Число импульсов, ед.')
+            plt.legend(['Измеренная скорость счета', 'Прогнозируемая истинная скорость счета'])
+            # text
+            # plt.text('Мертвое время: ', t_solution)
+            plt.grid(visible=True, which='major', color='g', linestyle='-')
+            plt.grid(visible=True, which='minor', color='g', linestyle='--')
             plt.yscale('log')
-            plt.show()
+            # plt.show()
             countsArrayOfPulse = []
 
         # print(i, meanValueFor14sec, stdValueFor14sec, countsArray[i], isPulse)
@@ -280,4 +291,4 @@ for path in paths:
     plt.grid(visible=True, which='minor', color='g', linestyle='--')
     plt.yscale('log')
     plt.minorticks_on()
-# plt.show()
+plt.show()
