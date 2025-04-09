@@ -76,7 +76,7 @@ for path in paths:
     stdValueFor14sec = 0
     pulseTiming = 0
 
-    # First way to define a pulse___________________________________________________________________________________________
+    # First way to define a pulse_______________________________________________________________________________________
     # Отслеживать изменение усредненного числа импульсов за N секунд. Суть заключается в том, что наличие нейтронного
     # импульса приводит к резкому изменению (насколько резкому?) усредненного числа зарегистрированных импульсов.
     # Недостаток заключается в том, что требуется задавать точное значение порога изменения, что может не определять
@@ -185,7 +185,7 @@ for path in paths:
             # # print("n =", n_solution)
             # # print(f"Residual norm: {np.linalg.norm(result.fun):.2e}")
 
-            plt.figure()
+            # plt.figure()
 
             # plt.plot(realCountRate)
             # plt.plot(countsArrayOfPulse)
@@ -196,12 +196,16 @@ for path in paths:
             plt.xlabel('Время, с')
             plt.ylabel('Число импульсов, ед.')
             plt.legend(['Измеренная скорость счета', 'Прогнозируемая истинная скорость счета'])
-            # text
-            # plt.text('Мертвое время: ', t_solution)
+            deadTimeText = 'Мертвое время: ' + str(round(t_solution * 10 ** 6)) + ' мкс'
+            n_solutionSumText = 'Сумма с поправкой: ' + str(round(sum(n_solution))) + ' имп.'
+            mSumText = 'Измеренная сумма: ' + str(round(sum(m))) + ' имп.'
+            unitedText = mSumText + '\n' + n_solutionSumText + '\n' + deadTimeText
+            plt.text(1, min(n_solution), unitedText, bbox=dict(facecolor='white', alpha=0.9))
             plt.grid(visible=True, which='major', color='g', linestyle='-')
             plt.grid(visible=True, which='minor', color='g', linestyle='--')
             plt.yscale('log')
-            # plt.show()
+            plt.show()
+            # print('Сумма после поправки на разрешающее время: ', sum(n_solution))
             countsArrayOfPulse = []
 
         # print(i, meanValueFor14sec, stdValueFor14sec, countsArray[i], isPulse)
